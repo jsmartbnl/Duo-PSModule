@@ -537,7 +537,12 @@ function duoGetUser()
             [String]$user_id,
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
-            [String]$username
+            [String]$username, 
+        # API pagination changes https://help.duo.com/s/article/4744?language=en_US
+        [Parameter(Mandatory=$false)]
+        [ValidateRange(1, 300)]
+        [int]
+        $limit = 300
     )
 
     [string[]]$param = "username"
@@ -559,11 +564,19 @@ function duoGetUser()
                 }
             }
         }
+        $parameters.Add('limit',$limit)
+        $parameters.Add('offset',0)
     }
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+        $request = @()
+        do {
+            $requestpage = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+            $parameters['offset'] += $limit
+            $request += $requestpage
+        } while (($requestpage|Measure-Object).count -eq $limit)
+        
     }
     catch
     {
